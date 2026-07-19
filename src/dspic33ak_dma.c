@@ -169,6 +169,12 @@ void dspic33ak_dma_global_init(void)
      * No printf / halt / application handling is performed here. */
     dspic33ak_dma_reg_set(&DMACON, DSPIC33AK_DMA_CON_ON);  /* DMACONbits.ON = 1 */
 
+    /* The CPU X/Y data buses outrank DMA by default when both contend for SRAM.
+     * Audio SPI requests arrive every 32-bit word and the channel has only one
+     * pending CHREQ slot, so a delayed request becomes DMAxSTAT.OVERRUN. Give
+     * DMA RAM transactions priority over the CPU; SFR arbitration is unchanged. */
+    dspic33ak_dma_reg_set(&BMXINITPR, DSPIC33AK_BMX_INITPR_DMAPR);
+
     DMAHIGH = DSPIC33AK_DMA_ADDR_WINDOW_HIGH;
     DMALOW  = DSPIC33AK_DMA_ADDR_WINDOW_LOW;
 }
@@ -184,6 +190,9 @@ bool dspic33ak_dma_global_is_ready(void)
         return false;
     }
     if (DMALOW != DSPIC33AK_DMA_ADDR_WINDOW_LOW) {
+        return false;
+    }
+    if (!dspic33ak_dma_reg_is_set(&BMXINITPR, DSPIC33AK_BMX_INITPR_DMAPR)) {
         return false;
     }
     return true;

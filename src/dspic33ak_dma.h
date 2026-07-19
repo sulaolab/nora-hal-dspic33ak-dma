@@ -36,6 +36,7 @@
 #define DSPIC33AK_DMA_ADDR_WINDOW_HIGH  (0x00FFFFFFUL)   /* -> DMAHIGH */
 
 /* DMAxSTAT status flags (raw status interpretation). */
+#define DSPIC33AK_DMA_STAT_OVERRUN      (1UL << 3)        /* DMAxSTATbits OVERRUN */
 #define DSPIC33AK_DMA_STAT_HALF         (1UL << 4)        /* DMAxSTATbits HALF */
 #define DSPIC33AK_DMA_STAT_DONE         (1UL << 5)        /* DMAxSTATbits DONE */
 

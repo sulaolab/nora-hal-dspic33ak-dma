@@ -67,6 +67,8 @@ This HAL is intentionally small and low-level.
 In scope:
 
 - DMA controller global enable + allowed address-window programming
+- DMA-priority SRAM arbitration (`BMXINITPR.DMAPR=1`) so a pending peripheral
+  request is not lost behind CPU X/Y bus traffic
 - Per-channel configuration (source/destination/count, address modes, element
   size, transfer/repeat mode, reload flags, trigger select, IRQ priority/enable)
 - Channel start/stop (`CHEN`)
@@ -162,10 +164,12 @@ dspic33ak_dma_irq_restore(0u, was);
 
 Global:
 
-- `dspic33ak_dma_global_init()` — turn the DMA controller on and program the
+- `dspic33ak_dma_global_init()` — turn the DMA controller on, give DMA SRAM
+  accesses priority over CPU X/Y traffic (`BMXINITPR.DMAPR=1`), and program the
   allowed DMA address window (`DMALOW` / `DMAHIGH`). Safe to call more than once.
 - `dspic33ak_dma_global_is_ready()` — return whether the controller is on and the
-  address window matches the configured values. Side-effect-free.
+  priority/address-window configuration matches the required values.
+  Side-effect-free.
 
 Per channel:
 
@@ -213,6 +217,12 @@ Ping-pong / ISR hot path:
   instruction. The order is chosen so a `HALF` / `DONE` event raised mid-sequence
   stays latched rather than being lost; confirm the latching behavior against the
   device data sheet for the DMA modes you use.
+- **Global arbitration policy.** `dspic33ak_dma_global_init()` sets
+  `BMXINITPR.DMAPR=1` for the entire device. This prioritizes DMA over CPU X/Y
+  SRAM accesses while leaving SFR arbitration unchanged. It prevents a delayed
+  peripheral request from overflowing the channel's single pending-request
+  slot (`DMAxSTAT.OVERRUN`), but integrators must include every DMA consumer and
+  CPU/DSP timing path in system-level regression tests.
 
 ## Notes
 
