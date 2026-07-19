@@ -9,9 +9,9 @@
 /*
  * Low-level DMA HAL (dsPIC33AK) - public interface.
  *
- * Clean low-level DMA abstraction sized for the two current users:
- *   - SPI-TDM audio (SPI_TDM_drv.c, channels 0..3)
- *   - PWM audio      (pwm.c,        channels 4..7, AK512 only)
+ * Clean low-level DMA abstraction used by SPI-TDM and PWM-audio consumers.
+ * Channel ownership is a consumer/project-config decision, not a HAL policy;
+ * a system enabling multiple DMA users must assign non-overlapping channels.
  *
  * Design boundaries (intentional)
  * -------------------------------

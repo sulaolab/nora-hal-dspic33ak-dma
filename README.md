@@ -25,8 +25,9 @@ Current validation target:
 - Compiler: XC-DSC v3.31.01
 - DFP: Microchip dsPIC33AK-MP DFP 1.3.185 or compatible
 - Validation projects:
-  - `perseus_512_96K` — DMA channels 0..3 as the ping-pong substrate of the
-    SPI/I2S/TDM audio transport (live WM8904 I2S/TDM loopback)
+  - `perseus_512_96K` — DMA channels 0..7 as the configured ping-pong substrate
+    of the SPI/I2S/TDM audio transport (live WM8904 I2S/TDM loopback; the
+    selected physical SPI bank determines the channel set)
   - `dspic33ak-hal-starter` — DMA under the SPI1 TDM8 codec-less smoke demo
 
 This HAL is validated as the DMA layer beneath those audio paths. It is the
@@ -229,9 +230,9 @@ Ping-pong / ISR hot path:
 - This repository does not include Microchip DFP header files.
 - This HAL is the DMA layer only; clock setup and peripheral (SPI/PWM/...) setup
   belong to the board/application and the consuming HALs.
-- This is the canonical home for the DMA HAL vendored by
+- This is the canonical DMA HAL used by
   [dspic33ak-spi-i2s-tdm-hal](https://github.com/sulaolab/dspic33ak-spi-i2s-tdm-hal)
-  and the dsPIC33AK CMSIS-Driver SAI wrapper.
+  and vendored into the dsPIC33AK HAL starter and CMSIS-Driver SAI repositories.
 
 ## License
 
