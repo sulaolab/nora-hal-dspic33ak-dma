@@ -68,8 +68,8 @@ This HAL is intentionally small and low-level.
 In scope:
 
 - DMA controller global enable + allowed address-window programming
-- DMA-priority SRAM arbitration (`BMXINITPR.DMAPR=1`) so a pending peripheral
-  request is not lost behind CPU X/Y bus traffic
+- DMA-priority SRAM arbitration (`BMXINITPR.DMAPR=1`) to prevent the observed
+  CPU X/Y SRAM-starvation path under DSP-heavy audio workloads
 - Per-channel configuration (source/destination/count, address modes, element
   size, transfer/repeat mode, reload flags, trigger select, IRQ priority/enable)
 - Channel start/stop (`CHEN`)
@@ -220,9 +220,10 @@ Ping-pong / ISR hot path:
   device data sheet for the DMA modes you use.
 - **Global arbitration policy.** `dspic33ak_dma_global_init()` sets
   `BMXINITPR.DMAPR=1` for the entire device. This prioritizes DMA over CPU X/Y
-  SRAM accesses while leaving SFR arbitration unchanged. It prevents a delayed
-  peripheral request from overflowing the channel's single pending-request
-  slot (`DMAxSTAT.OVERRUN`), but integrators must include every DMA consumer and
+  SRAM accesses while leaving SFR arbitration unchanged. It prevents the
+  observed CPU X/Y SRAM-starvation path that caused `DMAxSTAT.OVERRUN` under
+  DSP-heavy audio workloads, but it is not a blanket guarantee against every
+  possible overrun cause. Integrators must include every DMA consumer and
   CPU/DSP timing path in system-level regression tests.
 
 ## Notes
