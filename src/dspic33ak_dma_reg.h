@@ -32,6 +32,7 @@
 
 /* ---- DMACON (global control) ---- */
 #define DSPIC33AK_DMA_CON_ON          (1UL << 15)   /* DMACONbits.ON           */
+#define DSPIC33AK_BMX_INITPR_DMAPR    (1UL << 0)    /* BMXINITPRbits.DMAPR     */
 
 /* ---- DMAxCH single-bit fields ---- */
 #define DSPIC33AK_DMA_CH_CHEN         (1UL << 0)    /* DMAxCHbits.CHEN          */

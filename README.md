@@ -25,8 +25,9 @@ Current validation target:
 - Compiler: XC-DSC v3.31.01
 - DFP: Microchip dsPIC33AK-MP DFP 1.3.185 or compatible
 - Validation projects:
-  - `perseus_512_96K` — DMA channels 0..3 as the ping-pong substrate of the
-    SPI/I2S/TDM audio transport (live WM8904 I2S/TDM loopback)
+  - `perseus_512_96K` — DMA channels 0..7 as the configured ping-pong substrate
+    of the SPI/I2S/TDM audio transport (live WM8904 I2S/TDM loopback; the
+    selected physical SPI bank determines the channel set)
   - `dspic33ak-hal-starter` — DMA under the SPI1 TDM8 codec-less smoke demo
 
 This HAL is validated as the DMA layer beneath those audio paths. It is the
@@ -67,6 +68,8 @@ This HAL is intentionally small and low-level.
 In scope:
 
 - DMA controller global enable + allowed address-window programming
+- DMA-priority SRAM arbitration (`BMXINITPR.DMAPR=1`) to prevent the observed
+  CPU X/Y SRAM-starvation path under DSP-heavy audio workloads
 - Per-channel configuration (source/destination/count, address modes, element
   size, transfer/repeat mode, reload flags, trigger select, IRQ priority/enable)
 - Channel start/stop (`CHEN`)
@@ -162,10 +165,12 @@ dspic33ak_dma_irq_restore(0u, was);
 
 Global:
 
-- `dspic33ak_dma_global_init()` — turn the DMA controller on and program the
+- `dspic33ak_dma_global_init()` — turn the DMA controller on, give DMA SRAM
+  accesses priority over CPU X/Y traffic (`BMXINITPR.DMAPR=1`), and program the
   allowed DMA address window (`DMALOW` / `DMAHIGH`). Safe to call more than once.
 - `dspic33ak_dma_global_is_ready()` — return whether the controller is on and the
-  address window matches the configured values. Side-effect-free.
+  priority/address-window configuration matches the required values.
+  Side-effect-free.
 
 Per channel:
 
@@ -213,15 +218,22 @@ Ping-pong / ISR hot path:
   instruction. The order is chosen so a `HALF` / `DONE` event raised mid-sequence
   stays latched rather than being lost; confirm the latching behavior against the
   device data sheet for the DMA modes you use.
+- **Global arbitration policy.** `dspic33ak_dma_global_init()` sets
+  `BMXINITPR.DMAPR=1` for the entire device. This prioritizes DMA over CPU X/Y
+  SRAM accesses while leaving SFR arbitration unchanged. It prevents the
+  observed CPU X/Y SRAM-starvation path that caused `DMAxSTAT.OVERRUN` under
+  DSP-heavy audio workloads, but it is not a blanket guarantee against every
+  possible overrun cause. Integrators must include every DMA consumer and
+  CPU/DSP timing path in system-level regression tests.
 
 ## Notes
 
 - This repository does not include Microchip DFP header files.
 - This HAL is the DMA layer only; clock setup and peripheral (SPI/PWM/...) setup
   belong to the board/application and the consuming HALs.
-- This is the canonical home for the DMA HAL vendored by
+- This is the canonical DMA HAL used by
   [dspic33ak-spi-i2s-tdm-hal](https://github.com/sulaolab/dspic33ak-spi-i2s-tdm-hal)
-  and the dsPIC33AK CMSIS-Driver SAI wrapper.
+  and vendored into the dsPIC33AK HAL starter and CMSIS-Driver SAI repositories.
 
 ## License
 
