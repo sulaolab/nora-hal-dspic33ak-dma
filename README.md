@@ -1,4 +1,4 @@
-# dspic33ak-dma-hal
+# dspic33ak-hal-dma
 
 > Want to run it on hardware first?
 > Start with [dspic33ak-hal-starter](https://github.com/sulaolab/dspic33ak-hal-starter),
@@ -232,7 +232,7 @@ Ping-pong / ISR hot path:
 - This HAL is the DMA layer only; clock setup and peripheral (SPI/PWM/...) setup
   belong to the board/application and the consuming HALs.
 - This is the canonical DMA HAL used by
-  [dspic33ak-spi-i2s-tdm-hal](https://github.com/sulaolab/dspic33ak-spi-i2s-tdm-hal)
+  [dspic33ak-hal-spi-i2s-tdm](https://github.com/sulaolab/dspic33ak-hal-spi-i2s-tdm)
   and vendored into the dsPIC33AK HAL starter and CMSIS-Driver SAI repositories.
 
 ## License
