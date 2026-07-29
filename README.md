@@ -25,7 +25,7 @@ Current validation target:
 - Compiler: XC-DSC v3.31.01
 - DFP: Microchip dsPIC33AK-MP DFP 1.3.185 or compatible
 - Validation projects:
-  - `perseus_512_96K` — DMA channels 0..7 as the configured ping-pong substrate
+  - the upstream audio project — DMA channels 0..7 as the configured ping-pong substrate
     of the SPI/I2S/TDM audio transport (live WM8904 I2S/TDM loopback; the
     selected physical SPI bank determines the channel set)
   - `dspic33ak-hal-starter` — DMA under the SPI1 TDM8 codec-less smoke demo
