@@ -39,9 +39,11 @@ experiments.
 The public API is `nora_*` / `NORA_*`. It replaces the `dspic33ak_*` /
 `DSPIC33AK_*` namespace this repository used before 2026-08, and **there are no
 compatibility aliases** — a consumer moving to this version renames its call
-sites. The rename is purely textual: `dspic33ak_` → `nora_`,
-`DSPIC33AK_` → `NORA_`. (This version also changes two things that a rename
-alone will not cover; see [Migrating from the previous version](#migrating-from-the-previous-version).)
+sites. The **public** namespace migration is textual: `dspic33ak_` → `nora_`,
+`DSPIC33AK_` → `NORA_`. It is not a tree-wide substitution — backend-private
+names deliberately retain the silicon tag, as below. (This version also changes
+two things that a rename alone will not cover; see
+[Migrating from the previous version](#migrating-from-the-previous-version).)
 
 The chip name survives in exactly two places, both deliberate:
 
