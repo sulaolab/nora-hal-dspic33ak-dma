@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT-0 */
 /*
- * Low-level Nora DMA backend for dsPIC33A - implementation.
+ * Low-level NORA DMA backend for dsPIC33AK - implementation.
  *
  * Uses nora_dma_dspic33ak_reg.h for register bit masks/positions and generic SFR
  * helpers; no raw XC-DSC bitfield names (DMA0CHbits.*, DMA0SELbits.*, _DMA0IF,
@@ -70,7 +70,7 @@ static const nora_dma_ch_regs_t *nora_dma_regs(nora_dma_channel_t ch)
     return &s_dma_ch[ch];
 }
 
-/* Translate public DMA semantics into the dsPIC33A register encodings. */
+/* Translate public DMA semantics into the dsPIC33AK register encodings. */
 static bool nora_dma_dspic33ak_size_to_reg(nora_dma_size_t size, uint32_t *value)
 {
     if (value == 0) {

@@ -3,10 +3,10 @@
 #define NORA_DMA_DSPIC33AK_FAST_H
 
 /*
- * dsPIC33A DMA hot-path helpers.
+ * dsPIC33AK DMA hot-path helpers.
  *
  * This header intentionally exposes XC-DSC SFRs and is therefore never part
- * of the public Nora DMA contract.  Only the dsPIC33A backend and backend-aware,
+ * of the public NORA DMA contract.  Only the dsPIC33AK backend and backend-aware,
  * measured hot-path consumers include it, where a compile-time-constant channel
  * must fold to direct SFR accesses in an ISR or other measured hot path.
  *

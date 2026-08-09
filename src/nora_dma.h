@@ -7,13 +7,13 @@
 
 /*
  * nora_dma.h
- * Nora DMA HAL public interface.
+ * NORA DMA HAL public interface.
  *
  * Portability scope:
- *   This interface minimizes application changes between Nora-supported
+ *   This interface minimizes application changes between NORA-supported
  *   dsPIC33AK and dsPIC33CK ports. It is not a universal, arbitrary-processor
  *   DMA HAL: channel inventory, trigger-to-hardware mapping, address-window
- *   rules, and register behavior remain properties of the selected Nora port
+ *   rules, and register behavior remain properties of the selected NORA port
  *   and backend.
  *
  * Clean low-level DMA abstraction currently used by SPI/I2S/TDM consumers.
@@ -37,7 +37,7 @@
  */
 
 /*
- * Logical Nora DMA channel identity.  A port backend validates and maps this
+ * Logical NORA DMA channel identity.  A port backend validates and maps this
  * identity to the DMA channel inventory of its processor; code outside a
  * backend must not treat these values as SFR indexes.
  */
@@ -55,7 +55,7 @@ typedef enum {
 /*
  * DMA triggers currently needed by the SPI/I2S/TDM transport.  These are
  * logical peripheral events, not hardware trigger-select register values. The selected
- * Nora port maps them to its device-specific trigger representation.
+ * NORA port maps them to its device-specific trigger representation.
  */
 typedef enum {
     NORA_DMA_TRIGGER_SPI1_RX,
@@ -104,7 +104,7 @@ typedef enum {
 typedef struct {
     volatile void            *src;
     volatile void            *dst;
-    /* On the current dsPIC33A backend, count is the number
+    /* On the current dsPIC33AK backend, count is the number
      * of elements (of `size` width) to transfer per repeat -- it is NOT an
      * "elements - 1" register. Current users pass the element count of one
      * ping-pong half (ARRAY_SIZE() of that half-buffer). */

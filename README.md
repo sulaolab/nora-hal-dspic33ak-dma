@@ -1,8 +1,10 @@
 # nora-hal-dspic33ak-dma
 
+**NORA-HAL** — *Native On-chip Resource Assistant*
+
 Small, readable low-level DMA HAL for Microchip dsPIC33AK devices — part of
-**NORA-HAL** (Native On-chip Resource Assistant), a HAL family whose public API
-is namespaced `nora_*` / `NORA_*`.
+**NORA-HAL**, a HAL family whose public API is namespaced `nora_*` /
+`NORA_*`.
 
 > Want to run it on hardware first?
 > Start with [dspic33ak-hal-starter](https://github.com/sulaolab/dspic33ak-hal-starter),
@@ -14,6 +16,13 @@ is namespaced `nora_*` / `NORA_*`.
 > `dspic33ak-hal-starter`, which is in turn byte-identical to the audio-board
 > project that runs these sources on hardware. Fixes flow *into* here from that
 > validated tree — see [docs/nora_migration.md](docs/nora_migration.md).
+>
+> **One exception, 2026-08-09.** Comments and the folder README under `src/` were
+> corrected *here first*, ahead of the upstream tree: stale file names left behind by
+> the rename, `Nora` where the family name is `NORA`, and `dsPIC33A` where the text
+> means the dsPIC33AK backend. **No executable code changed.** The same corrections are
+> queued for upstream; the files are listed in
+> [docs/nora_migration.md](docs/nora_migration.md).
 
 This repository provides a thin, explicit abstraction over the dsPIC33AK DMA
 controller: global setup, per-channel configuration, channel start/stop,
@@ -324,7 +333,7 @@ Also worth knowing, though neither needs an edit:
 - This HAL is the DMA layer only; clock setup and peripheral (SPI/PWM/...) setup
   belong to the board/application and the consuming HALs.
 - This is the canonical DMA HAL used by
-  [dspic33ak-hal-spi-i2s-tdm](https://github.com/sulaolab/dspic33ak-hal-spi-i2s-tdm)
+  [nora-hal-dspic33ak-spi-i2s-tdm](https://github.com/sulaolab/nora-hal-dspic33ak-spi-i2s-tdm)
   and vendored into the dsPIC33AK HAL starter and CMSIS-Driver SAI repositories.
 
 ## License
