@@ -8,7 +8,7 @@
 /*
  * Internal DMA register helper layer.
  *
- * Similar in spirit to dspic33ak_i2c_reg.h: this file intentionally uses plain
+ * Similar in spirit to nora_i2c_dspic33ak_reg.h: this file intentionally uses plain
  * 32-bit bit masks / bit positions and a few minimal generic helpers instead of
  * XC-DSC bitfield structures such as DMAxCHbits.  The goal is to keep
  * compiler/DFP-specific details away from the readable driver.
