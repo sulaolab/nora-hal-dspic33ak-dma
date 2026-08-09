@@ -1,11 +1,19 @@
-# dspic33ak-hal-dma
+# nora-hal-dspic33ak-dma
+
+Small, readable low-level DMA HAL for Microchip dsPIC33AK devices — part of
+**NORA-HAL** (Native On-chip Resource Assistant), a HAL family whose public API
+is namespaced `nora_*` / `NORA_*`.
 
 > Want to run it on hardware first?
 > Start with [dspic33ak-hal-starter](https://github.com/sulaolab/dspic33ak-hal-starter),
-> which vendors validated snapshots of the dsPIC33AK HAL repositories and
+> which vendors validated snapshots of the NORA-HAL repositories and
 > provides a ready-to-build MPLAB X project for the dsPIC33AK Curiosity board.
 
-Small, readable low-level DMA HAL for Microchip dsPIC33AK devices.
+> **This repository is a published snapshot, not the development tree.** Every
+> file under `src/` is byte-identical to its counterpart in
+> `dspic33ak-hal-starter`, which is in turn byte-identical to the audio-board
+> project that runs these sources on hardware. Fixes flow *into* here from that
+> validated tree — see [docs/nora_migration.md](docs/nora_migration.md).
 
 This repository provides a thin, explicit abstraction over the dsPIC33AK DMA
 controller: global setup, per-channel configuration, channel start/stop,
@@ -16,6 +24,28 @@ and a PWM audio path), not as a general DMA framework.
 The goal is not a complete DMA framework, but compact, explicit, easy-to-review
 DMA building blocks for evaluation, FAE demos, and early software architecture
 experiments.
+
+## Naming
+
+The public API is `nora_*` / `NORA_*`. It replaces the `dspic33ak_*` /
+`DSPIC33AK_*` namespace this repository used before 2026-08, and **there are no
+compatibility aliases** — a consumer moving to this version renames its call
+sites. The rename is purely textual: `dspic33ak_` → `nora_`,
+`DSPIC33AK_` → `NORA_`. (This version also changes two things that a rename
+alone will not cover; see [Migrating from the previous version](#migrating-from-the-previous-version).)
+
+The chip name survives in exactly two places, both deliberate:
+
+* **Implementation file names** carry a backend tag: `nora_dma_dspic33ak.c` is
+  the dsPIC33AK backend of the processor-neutral `nora_dma.h`. A second
+  processor would add `nora_dma_<tag>.c` beside it, not a second header.
+* **Backend-private identifiers** inside those files (register-layer macros and
+  statics), which no caller sees.
+
+The tag is `_dspic33ak`, the device family this backend actually drives — not
+`_dspic33a`, which is the *core* family name (dsPIC33A) and one level too
+coarse. A dsPIC33CK backend would be tagged `_dspic33ck`: a different silicon
+family (dsPIC33**C**), and never abbreviated to `_dspic33c`.
 
 ## Status
 
@@ -90,63 +120,76 @@ Out of scope:
 
 ```text
 src/
-  dspic33ak_dma.c
-  dspic33ak_dma.h
-  dspic33ak_dma_reg.h
+  nora_dma.h                    public contract — no device header pulled in
+  nora_dma_dspic33ak.c          dsPIC33AK backend
+  nora_dma_dspic33ak_fast.h     backend-private ISR fast path (exposes SFRs)
+  nora_dma_dspic33ak_reg.h      backend-private register layer
 ```
+
+`nora_dma.h` deliberately does **not** `#include <xc.h>`: including the contract
+does not drag the device header into a translation unit that only wants the API.
+The two `_dspic33ak` headers do expose SFRs and are for the backend and for
+backend-aware, measured hot paths only.
 
 ## Integration
 
-1. Add `src/dspic33ak_dma.c` to the project.
+1. Add `src/nora_dma_dspic33ak.c` to the project.
 2. Add `src/` to the compiler include path.
-3. Include `dspic33ak_dma.h`.
-4. Call `dspic33ak_dma_global_init()` once before configuring channels.
-5. Own each used channel's `_DMAxInterrupt()` vector in the consumer module and
-   call the hot-path helpers from it.
+3. Include `nora_dma.h`.
+4. Call `nora_dma_global_init()` once before configuring channels.
+5. Own each used channel's `_DMAxInterrupt()` vector in the consumer module. Use
+   the ordinary calls, or include `nora_dma_dspic33ak_fast.h` and use the `_hot`
+   inlines when the ISR is a measured hot path.
 
 ## Basic Usage
 
 Bring up the DMA controller once, then configure and start a channel:
 
 ```c
-#include "dspic33ak_dma.h"
+#include "nora_dma.h"
 
-dspic33ak_dma_global_init();
+nora_dma_global_init();
 
-const dspic33ak_dma_channel_cfg_t rx_cfg = {
+const nora_dma_channel_cfg_t rx_cfg = {
     .src          = (volatile void *)&SPI1BUFR,
     .dst          = rx_buffer,
     .count        = RX_BUFFER_ELEMENTS,
-    .src_mode     = DSPIC33AK_DMA_ADDR_FIXED,
-    .dst_mode     = DSPIC33AK_DMA_ADDR_INCREMENT,
-    .size         = DSPIC33AK_DMA_SIZE_WORD,        /* 32-bit */
-    .tr_mode      = DSPIC33AK_DMA_TRMODE_REPEAT_CONTINUOUS,
+    .src_mode     = NORA_DMA_ADDR_FIXED,
+    .dst_mode     = NORA_DMA_ADDR_INCREMENT,
+    .size         = NORA_DMA_SIZE_WORD,        /* 32-bit */
+    .tr_mode      = NORA_DMA_TRMODE_REPEAT_CONTINUOUS,
     .reload_count = true,
     .reload_dst   = true,
     .half_int_en  = true,
     .done_int_en  = true,
-    .trigger_sel  = SPI1_RX_DMA_TRIGGER_ID,
+    .trigger      = NORA_DMA_TRIGGER_SPI1_RX,
     .irq_priority_set = true,
     .irq_priority = 4u,
     .irq_enable   = true,
 };
 
-if (dspic33ak_dma_channel_config(0u, &rx_cfg)) {
-    dspic33ak_dma_channel_enable(0u, true);
+if (nora_dma_channel_config(NORA_DMA_CHANNEL_0, &rx_cfg)) {
+    nora_dma_channel_enable(NORA_DMA_CHANNEL_0, true);
 }
 ```
 
-In the consumer's DMA ISR, use the hot-path helper (call with a compile-time
-constant channel so the compiler folds it to direct register accesses):
+`.trigger` names the peripheral event; the backend owns the device trigger ID, so
+the call site does not need the trigger table from the data sheet.
+
+In the consumer's DMA ISR, the hot-path variant folds to direct register accesses
+when the channel is a compile-time constant:
 
 ```c
+#include "nora_dma_dspic33ak_fast.h"   /* backend-private: exposes SFRs */
+
 void __attribute__((interrupt, context)) _DMA0Interrupt(void)
 {
-    uint32_t stat = dspic33ak_dma_isr_snapshot(0u);   /* clear IF, read+clear STAT */
+    /* clear IF, read+clear STAT */
+    nora_dma_status_t stat = nora_dma_isr_snapshot_hot(NORA_DMA_CHANNEL_0);
 
-    switch (dspic33ak_dma_half_from_status(stat)) {
-    case DSPIC33AK_DMA_HALF_FIRST:  /* first half ready  */ break;
-    case DSPIC33AK_DMA_HALF_SECOND: /* second half ready */ break;
+    switch (nora_dma_half_from_status(stat)) {
+    case NORA_DMA_HALF_FIRST:  /* first half ready  */ break;
+    case NORA_DMA_HALF_SECOND: /* second half ready */ break;
     default: break;
     }
 }
@@ -156,56 +199,81 @@ For short critical sections that must not be interrupted by a channel's DMA ISR,
 save and restore its interrupt-enable:
 
 ```c
-bool was = dspic33ak_dma_irq_disable_save(0u);
+bool was = nora_dma_irq_disable_save(NORA_DMA_CHANNEL_0);
 /* ... brief critical work ... */
-dspic33ak_dma_irq_restore(0u, was);
+nora_dma_irq_restore(NORA_DMA_CHANNEL_0, was);
 ```
+
+`nora_dma_irq_disable_save_hot()` / `_restore_hot()` in
+`nora_dma_dspic33ak_fast.h` are the inline equivalents for a hot path.
 
 ## API Summary
 
 Global:
 
-- `dspic33ak_dma_global_init()` — turn the DMA controller on, give DMA SRAM
+- `nora_dma_global_init()` — turn the DMA controller on, give DMA SRAM
   accesses priority over CPU X/Y traffic (`BMXINITPR.DMAPR=1`), and program the
   allowed DMA address window (`DMALOW` / `DMAHIGH`). Safe to call more than once.
-- `dspic33ak_dma_global_is_ready()` — return whether the controller is on and the
+- `nora_dma_global_is_ready()` — return whether the controller is on and the
   priority/address-window configuration matches the required values.
   Side-effect-free.
 
 Per channel:
 
-- `dspic33ak_dma_channel_config()` — configure a channel and leave it disabled.
+- `nora_dma_channel_config()` — configure a channel and leave it disabled.
   Returns false (and writes no register) for a NULL config, invalid channel,
   controller not ready, or an out-of-range enum / IRQ priority in the config.
   Re-config safe: masks the channel's CPU IRQ and clears stale `DMAxSTAT` /
   `_DMAxIF` before and after programming, so a leftover interrupt or `HALF` /
   `DONE` status from a previous run cannot disturb a stop → re-config → restart
   cycle.
-- `dspic33ak_dma_channel_enable()` — set/clear `CHEN` (start/stop the channel).
-- `dspic33ak_dma_irq_enable()` — set/clear the channel's CPU interrupt enable
+- `nora_dma_channel_enable()` — set/clear `CHEN` (start/stop the channel).
+- `nora_dma_irq_enable()` — set/clear the channel's CPU interrupt enable
   (`_DMAxIE`) independently of `CHEN`.
-- `dspic33ak_dma_irq_is_enabled()` — read the channel's `_DMAxIE`.
-- `dspic33ak_dma_irq_disable_save()` / `dspic33ak_dma_irq_restore()` — fast
-  inline save/mask and restore for short critical sections.
-- `dspic33ak_dma_clear_status()` — clear `DMAxSTAT`.
-- `dspic33ak_dma_clear_irq_flag()` — clear `_DMAxIF`.
-- `dspic33ak_dma_read_status()` — read raw `DMAxSTAT`.
-- `dspic33ak_dma_read_src()` — read raw `DMAxSRC` (inline).
+- `nora_dma_irq_is_enabled()` — read the channel's `_DMAxIE`.
+- `nora_dma_irq_disable_save()` / `nora_dma_irq_restore()` — save/mask and
+  restore a channel's interrupt enable for short critical sections.
+- `nora_dma_clear_status()` — clear `DMAxSTAT`.
+- `nora_dma_clear_irq_flag()` — clear `_DMAxIF`.
+- `nora_dma_read_status()` — read raw `DMAxSTAT` as a `nora_dma_status_t`.
+- `nora_dma_read_src()` — read raw `DMAxSRC`.
 
-Ping-pong / ISR hot path:
+Ping-pong / ISR:
 
-- `dspic33ak_dma_status_has_half_done_conflict()` — true if both `HALF` and
+- `nora_dma_status_has_completed_half()` — true if the snapshot reports a
+  completed half (`HALF`).
+- `nora_dma_status_has_overrun()` — true if the snapshot reports `OVERRUN`.
+- `nora_dma_status_has_half_done_conflict()` — true if both `HALF` and
   `DONE` are set in a status snapshot (a missed-deadline indicator for the
   consumer).
-- `dspic33ak_dma_half_from_status()` — interpret a `DMAxSTAT` value as a
-  ping-pong half indicator (`DONE` takes precedence over `HALF`).
-- `dspic33ak_dma_isr_snapshot()` — inline: clear `_DMAxIF`, snapshot `DMAxSTAT`,
-  clear `DMAxSTAT`; returns the raw snapshot. Call with a compile-time-constant
-  channel.
+- `nora_dma_half_from_status()` — interpret a status value as a ping-pong half
+  indicator (`DONE` takes precedence over `HALF`).
+- `nora_dma_isr_snapshot()` — clear `_DMAxIF`, snapshot `DMAxSTAT`, clear
+  `DMAxSTAT`; returns the snapshot.
+
+The status bits are read through those accessors rather than through exported
+bit masks, so `nora_dma_status_t` stays an opaque carrier.
+
+Hot path (`nora_dma_dspic33ak_fast.h`, backend-private):
+
+Each entry is a `static inline` shadow of the portable call above, named
+`<portable stem>_hot`, and the out-of-line version in the backend `.c` is
+literally a call to the inline. Call them with a compile-time-constant channel
+so the switch folds to a direct SFR access.
+
+- `nora_dma_isr_snapshot_hot()`
+- `nora_dma_irq_disable_save_hot()` / `nora_dma_irq_restore_hot()`
+- `nora_dma_read_src_hot()`
+- `nora_dma_status_has_completed_half_hot()` / `_has_overrun_hot()` /
+  `_has_half_done_conflict_hot()`
+
+The `_hot` suffix sits on the portable stem on purpose. An ISR body written
+against `_hot` names ports to another backend unchanged — only the `_fast.h`
+that supplies the inline differs.
 
 ## Behavior Notes
 
-- **`count` semantics.** `dspic33ak_dma_channel_cfg_t.count` is written verbatim
+- **`count` semantics.** `nora_dma_channel_cfg_t.count` is written verbatim
   to `DMAxCNT`. On dsPIC33AK `DMAxCNT` is the number of elements (of the
   configured `size`) to transfer per repeat — it is **not** an "elements − 1"
   register. Pass the element count of one ping-pong half.
@@ -213,18 +281,42 @@ Ping-pong / ISR hot path:
   - `config` / `enable` return `false` and write nothing.
   - `void` IRQ/status helpers silently ignore the call.
   - read helpers return `0`.
-- **ISR snapshot ordering.** `dspic33ak_dma_isr_snapshot()` performs an *ordered*
+- **ISR snapshot ordering.** `nora_dma_isr_snapshot()` (and its `_hot` inline)
+  performs an *ordered*
   sequence (`_DMAxIF=0`, read `DMAxSTAT`, `DMAxSTAT=0`), not a single atomic
   instruction. The order is chosen so a `HALF` / `DONE` event raised mid-sequence
   stays latched rather than being lost; confirm the latching behavior against the
   device data sheet for the DMA modes you use.
-- **Global arbitration policy.** `dspic33ak_dma_global_init()` sets
+- **Global arbitration policy.** `nora_dma_global_init()` sets
   `BMXINITPR.DMAPR=1` for the entire device. This prioritizes DMA over CPU X/Y
   SRAM accesses while leaving SFR arbitration unchanged. It prevents the
   observed CPU X/Y SRAM-starvation path that caused `DMAxSTAT.OVERRUN` under
   DSP-heavy audio workloads, but it is not a blanket guarantee against every
   possible overrun cause. Integrators must include every DMA consumer and
   CPU/DSP timing path in system-level regression tests.
+
+## Migrating from the previous version
+
+Beyond the textual `dspic33ak_` → `nora_` rename, two things need a real edit at
+the call site. Both are visible at compile time — nothing changes meaning
+silently.
+
+| before | now |
+|---|---|
+| `.trigger_sel = <raw Table 13-2 trigger ID>` | `.trigger = NORA_DMA_TRIGGER_SPI1_RX` (and the other SPI1..SPI4 RX/TX values) |
+| `NORA_DMA_STAT_HALF` / `_DONE` / `_OVERRUN` bit tests | `nora_dma_status_has_completed_half()` / `_has_half_done_conflict()` / `_has_overrun()` |
+
+Also worth knowing, though neither needs an edit:
+
+* The channel argument is `nora_dma_channel_t` (`NORA_DMA_CHANNEL_0..7`) instead
+  of a bare `uint8_t`; an existing `0u` still compiles.
+* `nora_dma_isr_snapshot()`, `_read_src()`, `_irq_disable_save()` and
+  `_irq_restore()` used to be `static inline` in the public header and are now
+  ordinary functions. If you relied on them inlining inside an ISR, include
+  `nora_dma_dspic33ak_fast.h` and call the `_hot` names.
+* `NORA_DMA_ADDR_WINDOW_LOW` / `_HIGH` are gone from the header. The backend
+  still programs `DMALOW` / `DMAHIGH` in `nora_dma_global_init()`; the constants
+  were simply not anyone's to read.
 
 ## Notes
 
