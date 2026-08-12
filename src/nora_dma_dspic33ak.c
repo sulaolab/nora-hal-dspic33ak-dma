@@ -120,6 +120,15 @@ static bool nora_dma_dspic33ak_trigger_to_chsel(nora_dma_trigger_t trigger,
         return false;
     }
     switch (trigger) {
+    /* The quiet code for a software-only channel.  DS70005591C Table 14-2 has no
+     * "no trigger source" encoding -- every CHSEL value names a peripheral, and the
+     * Reserved ranges (2Bh "tie to 0b0", 5Dh-62h, 6Fh-7Fh "do not use") are not an
+     * option.  03h "NVM - NVM Write Complete" is chosen because this family cannot
+     * raise it without a flash write in progress, so it is quiet by construction
+     * rather than quiet on one board.  A port that self-programs flash while a
+     * software-only channel is armed must choose another code -- the same caveat the
+     * CK backend records for its own 07h. */
+    case NORA_DMA_TRIGGER_NONE:    *chsel = 0x3u; return true;
     case NORA_DMA_TRIGGER_SPI1_RX: *chsel = 0x6u; return true;
     case NORA_DMA_TRIGGER_SPI1_TX: *chsel = 0x7u; return true;
     case NORA_DMA_TRIGGER_SPI2_RX: *chsel = 0x8u; return true;
@@ -381,6 +390,45 @@ bool nora_dma_channel_enable(nora_dma_channel_t ch, bool enable)
     return true;
 }
 
+/* Software request / request-pending / remaining count.
+ *
+ * These three are part of the portable NORA DMA contract even though nothing in
+ * this tree calls them: the silicon has the bits (DMAxCHbits.CHREQ, DMAxCNT) and a
+ * consumer written for another family -- e.g. the CK DMA self-test -- has to build
+ * here unchanged. Out-of-line and off every ISR path, so they cost nothing in a
+ * build with per-function sections and --gc-sections. */
+void nora_dma_software_trigger(nora_dma_channel_t ch)
+{
+    const nora_dma_ch_regs_t *r = nora_dma_regs(ch);
+
+    if (r == 0) {
+        return;
+    }
+    nora_dma_reg_set(r->CH, NORA_DMA_DSPIC33AK_CH_CHREQ);
+}
+
+bool nora_dma_request_pending(nora_dma_channel_t ch)
+{
+    const nora_dma_ch_regs_t *r = nora_dma_regs(ch);
+
+    if (r == 0) {
+        return false;
+    }
+    /* Hardware clears CHREQ when the requested transfer has been serviced. */
+    return nora_dma_reg_is_set(r->CH, NORA_DMA_DSPIC33AK_CH_CHREQ);
+}
+
+uint32_t nora_dma_read_count(nora_dma_channel_t ch)
+{
+    const nora_dma_ch_regs_t *r = nora_dma_regs(ch);
+
+    if (r == 0) {
+        return 0u;
+    }
+    /* DMAxCNT is 24 bits; mask so the value cannot depend on reserved bits. */
+    return (*r->CNT & NORA_DMA_DSPIC33AK_CNT_MASK);
+}
+
 void nora_dma_irq_enable(nora_dma_channel_t ch, bool enable)
 {
     nora_dma_hw_irq_enable(ch, enable);
@@ -449,6 +497,11 @@ bool nora_dma_status_has_overrun(nora_dma_status_t status)
 bool nora_dma_status_has_completed_half(nora_dma_status_t status)
 {
     return nora_dma_status_has_completed_half_hot(status);
+}
+
+bool nora_dma_status_has_completed(nora_dma_status_t status)
+{
+    return nora_dma_status_has_completed_hot(status);
 }
 
 nora_dma_half_t nora_dma_half_from_status(nora_dma_status_t status)

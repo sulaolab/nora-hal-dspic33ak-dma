@@ -151,4 +151,12 @@ nora_dma_status_has_completed_half_hot(nora_dma_status_t status)
     return ((status & mask) != 0u);
 }
 
+/* DONE only: the transfer as a whole. Deliberately not the same question as
+ * _has_completed_half_hot(), which is already true at the midpoint. */
+static inline bool
+nora_dma_status_has_completed_hot(nora_dma_status_t status)
+{
+    return ((status & NORA_DMA_DSPIC33AK_STAT_DONE) != 0u);
+}
+
 #endif /* NORA_DMA_DSPIC33AK_FAST_H */

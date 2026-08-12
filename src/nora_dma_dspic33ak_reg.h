@@ -67,6 +67,7 @@
 #define NORA_DMA_DSPIC33AK_CH_CHEN         (1UL << 0)    /* DMAxCHbits.CHEN    */
 #define NORA_DMA_DSPIC33AK_CH_HALFEN       (1UL << 1)    /* DMAxCHbits.HALFEN  */
 #define NORA_DMA_DSPIC33AK_CH_DONEEN       (1UL << 3)    /* DMAxCHbits.DONEEN  */
+#define NORA_DMA_DSPIC33AK_CH_CHREQ        (1UL << 4)    /* DMAxCHbits.CHREQ   */
 #define NORA_DMA_DSPIC33AK_CH_RELOADS      (1UL << 24)   /* DMAxCHbits.RELOADS */
 #define NORA_DMA_DSPIC33AK_CH_RELOADD      (1UL << 25)   /* DMAxCHbits.RELOADD */
 #define NORA_DMA_DSPIC33AK_CH_RELOADC      (1UL << 26)   /* DMAxCHbits.RELOADC */
@@ -80,6 +81,9 @@
 #define NORA_DMA_DSPIC33AK_CH_DAMODE_MASK  (0x3UL  << NORA_DMA_DSPIC33AK_CH_DAMODE_POS)
 #define NORA_DMA_DSPIC33AK_CH_SAMODE_POS   (14)          /* DMAxCHbits.SAMODE */
 #define NORA_DMA_DSPIC33AK_CH_SAMODE_MASK  (0x3UL  << NORA_DMA_DSPIC33AK_CH_SAMODE_POS)
+
+/* ---- DMAxCNT field ---- */
+#define NORA_DMA_DSPIC33AK_CNT_MASK        (0x00FFFFFFUL) /* DMAxCNTbits.CNT (24 bits) */
 
 /* ---- DMAxSEL field ---- */
 #define NORA_DMA_DSPIC33AK_SEL_CHSEL_POS   (0)           /* DMAxSELbits.CHSEL */

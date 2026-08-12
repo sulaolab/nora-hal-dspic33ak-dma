@@ -135,6 +135,7 @@ src/
   nora_dma_dspic33ak.c          dsPIC33AK backend
   nora_dma_dspic33ak_fast.h     backend-private ISR fast path (exposes SFRs)
   nora_dma_dspic33ak_reg.h      backend-private register layer
+  README.md                     the module contract, as the upstream project states it
 ```
 
 `nora_dma.h` deliberately does **not** `#include <xc.h>`: including the contract

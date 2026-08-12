@@ -56,8 +56,18 @@ typedef enum {
  * DMA triggers currently needed by the SPI/I2S/TDM transport.  These are
  * logical peripheral events, not hardware trigger-select register values. The selected
  * NORA port maps them to its device-specific trigger representation.
+ *
+ * Enumerator set is per family: AK reaches SPI4 where CK reaches SPI3.
+ *
+ * NORA_DMA_TRIGGER_NONE is the software-only channel: no peripheral event may
+ * fire it, and it is driven solely by nora_dma_software_trigger().  It is not a
+ * "don't care" -- the select field always names something, so a channel with no
+ * peripheral attached needs a positively quiet choice rather than a leftover
+ * one.  Naming the intent here is what lets a software-triggered consumer move
+ * between families, since the quiet code itself is per device.
  */
 typedef enum {
+    NORA_DMA_TRIGGER_NONE,
     NORA_DMA_TRIGGER_SPI1_RX,
     NORA_DMA_TRIGGER_SPI1_TX,
     NORA_DMA_TRIGGER_SPI2_RX,
@@ -143,16 +153,35 @@ typedef enum {
 } nora_dma_half_t;
 
 /*
- * Pure predicates over a status snapshot. All three are side-effect-free and take
- * the word, not the channel, so a caller that already snapshotted can classify it
+ * Pure predicates over a status snapshot. All are side-effect-free and take the
+ * word, not the channel, so a caller that already snapshotted can classify it
  * without touching hardware again.
  *
  * Each has a `_hot` static-inline twin in the backend's *_fast.h for ISR use; see
  * the fast header for the naming rule.
+ *
+ * Which question to ask depends on how the channel was armed, and the two
+ * "completed" predicates are NOT interchangeable:
+ *
+ *   - ping-pong (a repeating transfer whose halves are consumed alternately):
+ *     ask has_completed_half(), then half_from_status() for which half it was.
+ *   - single-shot (one transfer, armed once, waited on until it finishes):
+ *     ask has_completed(). has_completed_half() is already true at the MIDPOINT
+ *     of such a transfer, so spinning on it releases the caller while the second
+ *     half is still being written — and half_from_status() cannot express "the
+ *     whole transfer" either, because a single-shot has no second half to name.
  */
 bool nora_dma_status_has_half_done_conflict(nora_dma_status_t status);
 bool nora_dma_status_has_overrun(nora_dma_status_t status);
+
+/* A ping-pong half boundary was reached (HALF or DONE). Not the single-shot
+ * question — see the note above. */
 bool nora_dma_status_has_completed_half(nora_dma_status_t status);
+
+/* The transfer as a whole completed (DONE). This is the single-shot question,
+ * and it is what a self-test that arms one full-block transfer and spins must
+ * wait on. */
+bool nora_dma_status_has_completed(nora_dma_status_t status);
 
 /* ---- Global ---- */
 
@@ -195,6 +224,27 @@ bool nora_dma_channel_config(nora_dma_channel_t ch, const nora_dma_channel_cfg_t
  * enable==false: always disables (safe direction) and returns true, except for
  * an invalid channel index which returns false. */
 bool nora_dma_channel_enable(nora_dma_channel_t ch, bool enable);
+
+/* Request one transfer from software: exactly the effect the selected peripheral
+ * trigger would have if it fired once. The channel must already be configured and
+ * enabled. This is the only way to exercise a channel with no peripheral attached,
+ * which is what makes "is the DMA controller itself working?" answerable
+ * independently of the peripheral's event wiring. No-op for an invalid channel.
+ *
+ * Portable by contract, not by local need: no application in this tree calls it
+ * today, and it exists anyway because a consumer written for another NORA family
+ * must be able to move here unchanged. */
+void nora_dma_software_trigger(nora_dma_channel_t ch);
+
+/* True while a software- or peripheral-requested transfer is still outstanding;
+ * hardware clears the request when it is serviced. False for an invalid channel. */
+bool nora_dma_request_pending(nora_dma_channel_t ch);
+
+/* Elements still to move in the current transfer. Falling with no status flag set
+ * is direct evidence the channel is being triggered and is moving data. Returns 0
+ * for an invalid channel. The contract is uint32_t in every family; a backend whose
+ * count register is narrower returns the widened value. */
+uint32_t nora_dma_read_count(nora_dma_channel_t ch);
 
 /* General IRQ control: set/clear the channel's CPU interrupt enable,
  * independently of CHEN.
